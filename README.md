@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Movie Reservation System
 
-## Getting Started
+A **full-stack movie reservation system** built with Next.js, TypeScript, TailwindCSS, and MongoDB.  
+Users can browse movies, view details, select showtimes, pick seats, and confirm bookings. Admins can manage movies, theaters, showtimes, and view booking analytics.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Table of Contents
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- [Demo](#demo)
+- [Tech Stack](#tech-stack)
+- [Features](#features)
+- [Folder Structure](#folder-structure)
+- [Getting Started](#getting-started)
+- [Usage](#usage)
+- [Future Enhancements](#future-enhancements)
+- [License](#license)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Demo
 
-## Learn More
+_Add your live demo link or screenshots here._
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Tech Stack
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Frontend & Backend:** Next.js (App Router) + TypeScript
+- **Styling:** TailwindCSS
+- **Animations & UI Effects:** Framer Motion
+- **Icons:** Lucide Icons
+- **Data Fetching:** React Query
+- **Database:** MongoDB
+- **Authentication:** NextAuth.js
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Features
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### User-Facing
+
+- Browse movies with grid cards and filters (genre, date, popularity)
+- View detailed movie information
+- Select showtimes
+- Interactive seat selection with availability indicators
+- Confirm bookings with optional payment
+- View past and upcoming bookings in user profile
+- Fully responsive design (mobile, tablet, desktop)
+- Loading states (skeletons/spinners) for all async data
+- Accessible and performance-optimized
+
+### Admin Dashboard (Optional)
+
+- Add, update, delete movies
+- Manage theaters and seat layouts
+- Manage showtimes
+- View booking analytics with charts
+- Fully responsive, modern dashboard
+
+### Additional Pages
+
+- About
+- Contact
+- Footer included globally
+
+---
+
+## Folder Structure
+
+my-movie-app/
+│
+├─ app/
+│ ├─ page.tsx # Home page
+│ ├─ movies/[id]/page.tsx # Movie details
+│ ├─ seats/[showtimeId]/page.tsx
+│ ├─ profile/page.tsx
+│ ├─ admin/...
+│ ├─ about/page.tsx
+│ ├─ contact/page.tsx
+│ └─ api/
+│ ├─ auth/...
+│ ├─ movies/...
+│ ├─ showtimes/...
+│ └─ bookings/...
+│
+├─ components/ # Reusable UI components
+├─ lib/ # Database & helper functions
+├─ styles/ # Tailwind config / global CSS
+├─ public/ # Static assets (images, posters)
+├─ types/ # TypeScript types
+├─ package.json
+├─ tsconfig.json
+└─ next.config.js
