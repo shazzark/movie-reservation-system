@@ -39,3 +39,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Add these lines to .gitignore (open in VS Code or Notepad)
+node_modules/
+.env
+.DS_Store
+npm-debug.log
+*.env
+config/local.js
+.env.local
+
+node_modules
+.next
+.env*
