@@ -73,20 +73,13 @@ export function ProfileClient() {
     theaterId: b.theaterId,
   }));
 
-  // const getMovieDetails = (movieId: string) => {
-  //   return (movies as Movie[])?.find((m) => {
-  //     const mId = "_id" in m ? m._id : "id" in m ? m.id : null;
-  //     return mId === movieId;
-  //   });
-  // };
   const getMovieDetails = (movieId: string) => {
-    if (!movies) return undefined; // handle loading state
+    if (!movies) return undefined;
     return (movies as Movie[]).find((m) => m._id === movieId);
   };
 
   const getTheaterName = (theaterId?: string) => {
     if (!theaterId) return "Unknown Theater";
-
     const theater = (theaters as Theater[])?.find((t) => t._id === theaterId);
     return theater?.name || "Unknown Theater";
   };
