@@ -2,13 +2,10 @@
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { MongoDBAdapter } from "@next-auth/mongodb-adapter";
-import clientPromise from "./mongodbClient";
+import { User } from "../models/user";
 import bcrypt from "bcryptjs";
 
-import { User } from "../models/user";
-
-// Define the shape of what authorize returns
+// Define AuthUser type
 interface AuthUser {
   id: string;
   email: string;
@@ -17,8 +14,6 @@ interface AuthUser {
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: MongoDBAdapter(clientPromise),
-
   session: {
     strategy: "jwt",
   },
@@ -41,6 +36,7 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Missing credentials");
         }
 
+        // Use Mongoose to find the user
         const userDoc = await User.findOne({ email: credentials.email });
         if (!userDoc || !userDoc.password) throw new Error("User not found");
 
@@ -63,8 +59,8 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.role = (user as AuthUser).role;
         token.sub = (user as AuthUser).id;
+        token.role = (user as AuthUser).role;
       }
       return token;
     },
