@@ -38,6 +38,7 @@ export const createUser = async (data: {
 
   const user = new User({
     ...data,
+    email: data.email.trim().toLowerCase(),
     password: hashedPassword,
   });
 
