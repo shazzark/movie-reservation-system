@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
-import { Navigation } from '../../component/navigation'
-import { Footer } from '../../component/footer'
+import { CustomerShell } from '@/component/layout/customer-shell'
 import { ProfileClient } from '../../component/profile/profile-client'
 
 export const metadata: Metadata = {
@@ -10,12 +9,8 @@ export const metadata: Metadata = {
 
 export default function ProfilePage() {
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <Navigation />
-      <main className="flex-1">
-        <ProfileClient />
-      </main>
-      <Footer />
-    </div>
+    <CustomerShell>
+      <ProfileClient />
+    </CustomerShell>
   )
 }

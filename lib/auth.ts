@@ -1,9 +1,9 @@
 // lib/auth.ts
 import { NextAuthOptions } from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { User } from "../models/user";
 import bcrypt from "bcryptjs";
+import dbConnect from "./db";
 
 // Define AuthUser type
 interface AuthUser {
@@ -18,13 +18,7 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
 
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-
-    CredentialsProvider({
+  providers: [CredentialsProvider({
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
@@ -36,7 +30,7 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Missing credentials");
         }
 
-        // Use Mongoose to find the user
+        await dbConnect();
         const userDoc = await User.findOne({ email: credentials.email });
         if (!userDoc || !userDoc.password) throw new Error("User not found");
 
@@ -53,8 +47,7 @@ export const authOptions: NextAuthOptions = {
           role: userDoc.role as "user" | "admin",
         };
       },
-    }),
-  ],
+    })],
 
   callbacks: {
     async jwt({ token, user }) {

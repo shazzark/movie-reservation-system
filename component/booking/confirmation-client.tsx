@@ -1,293 +1,75 @@
 "use client";
 
-import { useMovieById } from "../../lib/hooks/useMovie";
-import { useShowtimeDetails } from "../../lib/hooks/useShowtimes";
-// @/lib/hooks/use-showtimes
-import { useSeatsByShowtime } from "../../lib/hooks/useSeats";
-import { useState } from "react";
-import { Skeleton } from "../../component/skeleton";
-import { Button } from "../../component/ui/button";
-import { Card } from "../../component/ui/card";
-import { Badge } from "../../component/ui/badge";
+import { useQuery } from "@tanstack/react-query";
+import Image from "next/image";
 import Link from "next/link";
-import { CheckCircle2, Printer, Share2, Home } from "lucide-react";
-import { motion } from "framer-motion";
+import { Check, Clock3, MapPin, Ticket } from "lucide-react";
+import api from "@/lib/api";
+import { useMovieById } from "@/lib/hooks/useMovie";
+import { Skeleton } from "@/component/skeleton";
+import { Button } from "@/component/ui/button";
+import { Card } from "@/component/ui/card";
+import { Badge } from "@/component/ui/badge";
 
-interface ConfirmationClientProps {
-  showtimeId: string;
-  seatIds: string[];
-}
+export function ConfirmationClient({ bookingId }: { bookingId: string }) {
+  const bookingQuery = useQuery({ queryKey: ["booking", bookingId], queryFn: () => api.booking.getById(bookingId) });
+  const booking = bookingQuery.data?.data;
+  const movieQuery = useMovieById(booking?.movieId);
+  const movie = movieQuery.data;
 
-export function ConfirmationClient({
-  showtimeId,
-  seatIds,
-}: ConfirmationClientProps) {
-  const [bookingId] = useState(() => `BK${Date.now().toString().slice(-8)}`);
-  const { data: showtimeData, isLoading: showtimeLoading } =
-    useShowtimeDetails(showtimeId);
-
-  const { data: allSeats = [], isLoading: seatsLoading } =
-    useSeatsByShowtime(showtimeId);
-  const { data: movie, isLoading: movieLoading } = useMovieById(
-    showtimeData?.showtime.movieId,
-  );
-
-  const selectedSeats = allSeats.filter((seat) => seatIds.includes(seat.id));
-  const totalPrice =
-    selectedSeats.length * (showtimeData?.showtime.pricePerSeat || 0);
-
-  const isLoading = showtimeLoading || seatsLoading || movieLoading;
-
-  if (isLoading) {
-    return (
-      <div className="mx-auto max-w-2xl px-4 py-12">
-        <Skeleton className="h-12 w-32 mx-auto mb-8" />
-        <div className="space-y-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 w-full rounded-lg" />
-          ))}
-        </div>
-      </div>
-    );
+  if (bookingQuery.isLoading || (booking && movieQuery.isLoading)) {
+    return <div className="mx-auto max-w-3xl space-y-5 px-4 py-12 sm:px-6" role="status" aria-live="polite" aria-label="Loading reservation"><Skeleton className="mx-auto h-14 w-14 rounded-full" /><Skeleton className="mx-auto h-10 w-72" /><Skeleton className="h-80 rounded-3xl" /></div>;
   }
 
-  if (!showtimeData || !movie) {
-    return (
-      <div className="mx-auto max-w-2xl px-4 py-12 text-center">
-        <h2 className="text-2xl font-bold text-foreground mb-4">
-          Error loading booking details
-        </h2>
-        <Link href="/">
-          <Button>Back to Home</Button>
-        </Link>
-      </div>
-    );
+  if (bookingQuery.error || !booking) {
+    return <div className="mx-auto max-w-2xl px-4 py-24 text-center" role="alert"><h1 className="text-3xl font-bold">Reservation unavailable</h1><p className="mt-3 text-muted-foreground">{bookingQuery.error instanceof Error ? bookingQuery.error.message : "This reservation could not be loaded."}</p><div className="mt-6 flex justify-center gap-3"><Button variant="outline" onClick={() => void bookingQuery.refetch()}>Try again</Button><Button asChild><Link href="/profile">View reservation history</Link></Button></div></div>;
   }
 
-  const startDate = new Date(showtimeData.showtime.startTime);
-  const endDate = new Date(showtimeData.showtime.endTime);
+  const confirmed = booking.status === "confirmed";
+  const cancelled = booking.status === "cancelled";
+  const start = booking.showtime ? new Date(booking.showtime.startTime) : null;
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="mx-auto max-w-2xl px-4 py-12"
-    >
-      {/* Success Icon */}
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ type: "spring", stiffness: 200, damping: 10 }}
-        className="flex justify-center mb-8"
-      >
-        <div className="relative">
-          <div className="absolute inset-0 bg-green-500/20 rounded-full animate-pulse" />
-          <CheckCircle2 className="h-20 w-20 text-green-500 relative" />
+    <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="mx-auto mb-8 max-w-2xl text-center">
+        <div className={`mx-auto mb-5 grid size-14 place-items-center rounded-full border ${confirmed ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-300" : "border-border bg-card text-muted-foreground"}`}>
+          {confirmed ? <Check className="size-7" aria-hidden="true" /> : <Ticket className="size-6" aria-hidden="true" />}
         </div>
-      </motion.div>
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-primary">Reservation details</p>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">{confirmed ? "Reservation confirmed" : cancelled ? "Reservation cancelled" : "Reservation status"}</h1>
+        <p className="mt-3 text-muted-foreground">{confirmed ? "Your seats are reserved. Keep this reference for your records." : cancelled ? "This reservation has been cancelled and the seats were released." : "The current status of your reservation is shown below."}</p>
+      </div>
 
-      {/* Title */}
-      <motion.h1
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-        className="text-4xl font-bold text-foreground text-center mb-3"
-      >
-        Booking Confirmed!
-      </motion.h1>
-
-      <motion.p
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-        className="text-lg text-muted-foreground text-center mb-8"
-      >
-        Your movie tickets have been successfully reserved
-      </motion.p>
-
-      {/* Booking Details Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.4 }}
-      >
-        <Card className="p-8 mb-8 border-border">
-          {/* Booking Number */}
-          <div className="text-center pb-6 border-b border-border mb-6">
-            <p className="text-sm text-muted-foreground mb-1">
-              Booking Reference
-            </p>
-            <p className="text-3xl font-bold text-accent font-mono">
-              {bookingId}
-            </p>
+      <Card className="overflow-hidden border-border">
+        <div className="grid sm:grid-cols-[220px_minmax(0,1fr)]">
+          <div className="relative aspect-[16/10] bg-muted sm:aspect-auto sm:min-h-[430px]">
+            {movie?.posterUrl && <Image src={movie.posterUrl} alt={`${movie.title} artwork`} fill sizes="(max-width: 640px) 100vw, 220px" className="object-cover" />}
           </div>
-
-          {/* Movie Details */}
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-sm font-semibold text-muted-foreground mb-1">
-                Movie
-              </h3>
-              <p className="text-xl font-bold text-foreground">{movie.title}</p>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {movie.genre.map((g) => (
-                  <Badge key={g} variant="secondary" className="text-xs">
-                    {g}
-                  </Badge>
-                ))}
-              </div>
+          <div className="p-5 sm:p-7">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Movie</p><h2 className="mt-1 text-2xl font-bold">{movie?.title ?? "Movie details unavailable"}</h2></div>
+              <Badge variant={confirmed ? "default" : cancelled ? "secondary" : "outline"} className="capitalize">{booking.status}</Badge>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h3 className="text-sm font-semibold text-muted-foreground mb-1">
-                  Theater
-                </h3>
-                <p className="font-bold text-foreground">
-                  {showtimeData.theaterName}
-                </p>
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-muted-foreground mb-1">
-                  Date
-                </h3>
-                <p className="font-bold text-foreground">
-                  {startDate.toLocaleDateString()}
-                </p>
-              </div>
+            <div className="mt-6 grid gap-x-5 gap-y-5 sm:grid-cols-2">
+              <div className="flex gap-3"><MapPin className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" /><div><p className="text-xs text-muted-foreground">Theater</p><p className="mt-1 font-semibold">{booking.theater?.name ?? "Theater details unavailable"}</p><p className="text-sm text-muted-foreground">{booking.theater?.location ?? ""}</p></div></div>
+              <div className="flex gap-3"><Clock3 className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" /><div><p className="text-xs text-muted-foreground">Showtime</p><p className="mt-1 font-semibold">{start ? new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }).format(start) : "Showtime details unavailable"}</p></div></div>
+              <div className="flex gap-3"><Ticket className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" /><div><p className="text-xs text-muted-foreground">Seats</p><p className="mt-1 font-semibold">{booking.seats.join(", ")}</p><p className="text-sm text-muted-foreground">{booking.seats.length} {booking.seats.length === 1 ? "ticket" : "tickets"} · ${booking.showtime?.price.toFixed(2) ?? "—"} per seat</p></div></div>
+              <div><p className="text-xs text-muted-foreground">Reservation reference</p><p className="mt-1 break-all font-mono text-sm font-semibold">{booking._id}</p></div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h3 className="text-sm font-semibold text-muted-foreground mb-1">
-                  Show Time
-                </h3>
-                <p className="font-bold text-foreground">
-                  {startDate.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-muted-foreground mb-1">
-                  Duration
-                </h3>
-                <p className="font-bold text-foreground">
-                  {Math.floor(movie.duration / 60)}h {movie.duration % 60}m
-                </p>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-semibold text-muted-foreground mb-3">
-                Selected Seats
-              </h3>
-              <div className="grid grid-cols-4 gap-2">
-                {selectedSeats
-                  .sort(
-                    (a, b) =>
-                      a.row.localeCompare(b.row) || a.seatNumber - b.seatNumber,
-                  )
-                  .map((seat) => (
-                    <div
-                      key={seat.id}
-                      className="bg-accent/10 border border-accent rounded-md px-3 py-2 text-center"
-                    >
-                      <p className="font-bold text-foreground">
-                        {seat.row}
-                        {seat.seatNumber}
-                      </p>
-                    </div>
-                  ))}
-              </div>
-            </div>
-
-            {/* Price Summary */}
-            <div className="pt-6 border-t border-border">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-muted-foreground">
-                  {selectedSeats.length} seat
-                  {selectedSeats.length !== 1 ? "s" : ""} @ $
-                  {showtimeData.showtime.pricePerSeat}
-                </span>
-                <span className="font-bold text-foreground">
-                  ${totalPrice.toFixed(2)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center pt-3 border-t border-border">
-                <span className="font-bold text-lg text-foreground">
-                  Total Amount
-                </span>
-                <span className="text-2xl font-bold text-accent">
-                  ${totalPrice.toFixed(2)}
-                </span>
-              </div>
-            </div>
-
-            {/* Status */}
-            <div className="bg-green-500/10 border border-green-500/30 rounded-md p-4 text-center">
-              <p className="text-sm font-semibold text-green-600">
-                ✓ Payment Completed
-              </p>
+            <div className="mt-7 flex items-center justify-between border-t border-border pt-5">
+              <span className="font-semibold">Reservation total</span>
+              <span className="text-2xl font-bold">${booking.totalPrice.toFixed(2)}</span>
             </div>
           </div>
-        </Card>
-      </motion.div>
+        </div>
+      </Card>
 
-      {/* Action Buttons */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.5 }}
-        className="flex flex-col sm:flex-row gap-3"
-      >
-        <Button
-          variant="outline"
-          className="gap-2 flex-1 bg-transparent"
-          onClick={() => window.print()}
-        >
-          <Printer className="h-4 w-4" />
-          Print Ticket
-        </Button>
-        <Button
-          variant="outline"
-          className="gap-2 flex-1 bg-transparent"
-          onClick={() => {
-            // Share functionality
-            if (navigator.share) {
-              navigator.share({
-                title: "Movie Booking Confirmed",
-                text: `I booked ${movie.title} - Reference: ${bookingId}`,
-              });
-            }
-          }}
-        >
-          <Share2 className="h-4 w-4" />
-          Share
-        </Button>
-      </motion.div>
-
-      {/* Navigation Links */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.6 }}
-        className="flex flex-col gap-3 mt-6"
-      >
-        <Link href="/profile">
-          <Button variant="default" className="w-full">
-            View My Bookings
-          </Button>
-        </Link>
-        <Link href="/">
-          <Button variant="outline" className="w-full gap-2 bg-transparent">
-            <Home className="h-4 w-4" />
-            Back to Home
-          </Button>
-        </Link>
-      </motion.div>
-    </motion.div>
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <Button asChild className="flex-1"><Link href="/profile">View reservation history</Link></Button>
+        <Button asChild variant="outline" className="flex-1"><Link href="/movies">Browse movies</Link></Button>
+      </div>
+    </div>
   );
 }

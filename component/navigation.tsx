@@ -1,234 +1,135 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { User, LogOut, LayoutDashboard, Menu, X } from "lucide-react";
-import { Button } from "../component/ui/button";
-import { cn } from "../lib/utils";
-import Logo from "../component/logo";
 import { useSession, signOut } from "next-auth/react";
-import type { Session } from "next-auth";
+import { LogOut, Menu, X } from "lucide-react";
+import Logo from "./logo";
+import { Button } from "./ui/button";
+import { cn } from "@/lib/utils";
 
-interface NavLinksProps {
-  isActive: (href: string) => boolean;
-  pathname: string;
-  session: Session | null;
-  isMobile?: boolean;
-}
-
-interface CustomUser {
-  name?: string | null;
-  email?: string | null;
-  image?: string | null;
-  role?: string | null;
-}
+const navigation = [
+  { href: "/", label: "Home" },
+  { href: "/movies", label: "Movies" },
+  { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
+];
 
 export function Navigation() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const isLoading = status === "loading";
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
-  const isActive = (href: string) => pathname === href;
-  const closeMenu = () => setIsMenuOpen(false);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        menuButtonRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [menuOpen]);
+
+  const isActive = (href: string) =>
+    href === "/movies"
+      ? pathname === href || pathname.startsWith("/movie/") || pathname.startsWith("/seats/")
+      : pathname === href;
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-sm">
-      <div className="mx-auto max-w-7xl px-4 py-3">
-        <div className="flex items-center justify-between">
-          <Logo />
+    <header className="sticky top-0 z-40 border-b border-border/80 bg-background/95 backdrop-blur-xl">
+      <div className="mx-auto flex h-18 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <Logo />
 
-          {/* Desktop Navigation */}
-          <div className="hidden gap-1 md:flex">
-            <NavLinks
-              isActive={isActive}
-              pathname={pathname}
-              session={session}
-            />
-          </div>
+        <nav aria-label="Primary navigation" className="hidden items-center gap-1 md:flex">
+          {navigation.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={isActive(item.href) ? "page" : undefined}
+              className={cn(
+                "rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                isActive(item.href) ? "bg-secondary text-foreground" : "text-muted-foreground",
+              )}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
 
-          <div className="flex items-center gap-2">
-            {!isLoading && (
-              <>
-                {session ? (
-                  <>
-                    {" "}
-                    {/* Wrapped in fragment to fix JSX error */}
-                    <Link href="/profile">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className={cn(
-                          "cursor-pointer gap-2 text-foreground",
-                          isActive("/profile") && "text-white bg-purple-600/30",
-                        )}
-                      >
-                        <User className="h-4 w-4" />
-                        <span className="hidden sm:inline">
-                          {session.user?.name}
-                        </span>
-                      </Button>
-                    </Link>
-                    {/* Desktop Logout Button */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => signOut({ callbackUrl: "/" })}
-                      className="hidden md:flex cursor-pointer text-slate-300 border-red-500/30 hover:bg-red-500/10 gap-2"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      <span className="hidden lg:inline">Logout</span>
-                    </Button>
-                  </>
-                ) : (
-                  <div className="hidden sm:flex gap-2">
-                    <Link href="/login">
-                      <Button variant="outline" size="sm">
-                        Sign In
-                      </Button>
-                    </Link>
-
-                    <Link href="/signup">
-                      <Button size="sm" className="hidden sm:flex">
-                        Sign Up
-                      </Button>
-                    </Link>
-                  </div>
-                )}
-
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="md:hidden text-slate-300"
-                  onClick={() => setIsMenuOpen(!isMenuOpen)}
-                >
-                  {isMenuOpen ? (
-                    <X className="h-6 w-6 text-foreground" />
-                  ) : (
-                    <Menu className="h-6 w-6 text-foreground" />
-                  )}
-                </Button>
-              </>
-            )}
-          </div>
+        <div className="hidden items-center gap-2 md:flex">
+          {status === "authenticated" && session ? (
+            <>
+              {session.user.role === "admin" && (
+                <Link href="/admin" className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  Admin
+                </Link>
+              )}
+              <Link href="/profile" className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                My bookings
+              </Link>
+              <Button variant="ghost" size="sm" onClick={() => void signOut({ callbackUrl: "/" })} aria-label="Sign out">
+                <LogOut className="size-4" aria-hidden="true" />
+                Sign out
+              </Button>
+            </>
+          ) : status === "unauthenticated" ? (
+            <>
+              <Button asChild variant="ghost" size="sm"><Link href="/login">Sign in</Link></Button>
+              <Button asChild size="sm"><Link href="/signup">Create account</Link></Button>
+            </>
+          ) : null}
         </div>
 
-        {/* Mobile Dropdown */}
-        {isMenuOpen && (
-          <div className="md:hidden pt-4 pb-2 border-t border-border mt-3 space-y-2 animate-in slide-in-from-top-5">
-            <div className="flex flex-col gap-2" onClick={closeMenu}>
-              <NavLinks
-                isActive={isActive}
-                pathname={pathname}
-                session={session}
-                isMobile
-              />
-
-              {session ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => signOut({ callbackUrl: "/" })}
-                  className="w-full justify-start text-red-400 border-red-500/30 gap-2"
-                >
-                  <LogOut className="h-4 w-4" /> Logout
-                </Button>
-              ) : (
-                <div className="flex flex-col gap-2 pt-2">
-                  <Link href="/login">
-                    <Button variant="outline" className="w-full">
-                      Sign In
-                    </Button>
-                  </Link>
-                  <Link href="/signup">
-                    <Button className="w-full">Sign Up</Button>
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        <button
+          type="button"
+          ref={menuButtonRef}
+          aria-label={menuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={menuOpen}
+          aria-controls="mobile-navigation"
+          onClick={() => setMenuOpen((open) => !open)}
+          className="inline-flex size-10 items-center justify-center rounded-xl border border-border text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
+        >
+          {menuOpen ? <X className="size-5" aria-hidden="true" /> : <Menu className="size-5" aria-hidden="true" />}
+        </button>
       </div>
-    </nav>
-  );
-}
 
-function NavLinks({
-  isActive,
-  pathname,
-  session,
-  isMobile = false,
-}: NavLinksProps) {
-  const linkClass = isMobile
-    ? "w-full justify-start text-lg px-4 py-6"
-    : "cursor-pointer text-slate-300 hover:text-white";
-
-  return (
-    <>
-      <Link href="/" className={isMobile ? "w-full" : ""}>
-        <Button
-          variant="ghost"
-          className={cn(
-            linkClass,
-            isActive("/") && "bg-purple-600/30 text-white",
-          )}
-        >
-          Home
-        </Button>
-      </Link>
-
-      {(session?.user as CustomUser)?.role === "admin" && (
-        <Link href="/admin" className={isMobile ? "w-full" : ""}>
-          <Button
-            variant="ghost"
-            className={cn(
-              linkClass,
-              "text-amber-400 hover:text-amber-300",
-              pathname.startsWith("/admin") && "bg-amber-500/20 text-white",
-            )}
-          >
-            <LayoutDashboard className="mr-2 h-4 w-4" /> Admin
-          </Button>
-        </Link>
+      {menuOpen && (
+        <nav id="mobile-navigation" aria-label="Mobile navigation" className="border-t border-border bg-card px-4 py-4 md:hidden">
+          <div className="mx-auto flex max-w-7xl flex-col gap-1">
+            {navigation.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setMenuOpen(false)}
+                aria-current={isActive(item.href) ? "page" : undefined}
+                className={cn(
+                  "rounded-xl px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  isActive(item.href) ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                )}
+              >
+                {item.label}
+              </Link>
+            ))}
+            <div className="my-2 border-t border-border" />
+            {status === "authenticated" && session ? (
+              <>
+                <Link href="/profile" onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary">My bookings</Link>
+                {session.user.role === "admin" && <Link href="/admin" onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary">Admin</Link>}
+                <button type="button" onClick={() => void signOut({ callbackUrl: "/" })} className="rounded-xl px-4 py-3 text-left text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">Sign out</button>
+              </>
+            ) : status === "unauthenticated" ? (
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <Button asChild variant="outline"><Link href="/login" onClick={() => setMenuOpen(false)}>Sign in</Link></Button>
+                <Button asChild><Link href="/signup" onClick={() => setMenuOpen(false)}>Create account</Link></Button>
+              </div>
+            ) : null}
+          </div>
+        </nav>
       )}
-
-      <Link href="/movies" className={isMobile ? "w-full" : ""}>
-        <Button
-          variant="ghost"
-          className={cn(
-            linkClass,
-            (isActive("/movies") || pathname.startsWith("/movie/")) &&
-              "bg-purple-600/30 text-white",
-          )}
-        >
-          Movies
-        </Button>
-      </Link>
-
-      <Link href="/about" className={isMobile ? "w-full" : ""}>
-        <Button
-          variant="ghost"
-          className={cn(
-            linkClass,
-            isActive("/about") && "bg-purple-600/30 text-white",
-          )}
-        >
-          About
-        </Button>
-      </Link>
-
-      <Link href="/contact" className={isMobile ? "w-full" : ""}>
-        <Button
-          variant="ghost"
-          className={cn(
-            linkClass,
-            isActive("/contact") && "bg-purple-600/30 text-white",
-          )}
-        >
-          Contact
-        </Button>
-      </Link>
-    </>
+    </header>
   );
 }

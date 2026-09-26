@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
-import { Navigation } from '../../../component/navigation'
-import { Footer } from '../../../component/footer'
+import { CustomerShell } from '@/component/layout/customer-shell'
 import { SeatSelectionClient } from '../../../component/seats/seat-section-client'
 
 
@@ -17,12 +16,8 @@ export default async function SeatsPage({ params }: PageProps) {
   const { id } = await params
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <Navigation />
-      <main className="flex-1">
-        <SeatSelectionClient showtimeId={id} />
-      </main>
-      <Footer />
-    </div>
+    <CustomerShell>
+      <SeatSelectionClient showtimeId={id} />
+    </CustomerShell>
   )
 }

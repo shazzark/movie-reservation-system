@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import type { Seat } from "../../types/seat";
 import { cn } from "../../lib/utils";
 
@@ -11,32 +10,24 @@ interface SeatButtonProps {
 }
 
 export function SeatButton({ seat, isSelected, onClick }: SeatButtonProps) {
-  const getButtonStyle = () => {
-    if (!seat.isAvailable) {
-      return "bg-muted cursor-not-allowed opacity-50";
-    }
-    if (isSelected) {
-      return "bg-accent text-accent-foreground";
-    }
-    return "bg-green-500/20 border-green-500/50 hover:bg-green-500/30 cursor-pointer";
-  };
-
+  const state = !seat.isAvailable ? "occupied" : isSelected ? "selected" : "available";
   return (
-    <motion.button
-      whileHover={seat.isAvailable && !isSelected ? { scale: 1.1 } : {}}
-      whileTap={seat.isAvailable ? { scale: 0.95 } : {}}
+    <button
+      type="button"
       onClick={onClick}
       disabled={!seat.isAvailable}
+      aria-label={`Seat ${seat.id}, ${state}`}
+      aria-pressed={isSelected}
+      title={`Seat ${seat.id} · ${state}`}
       className={cn(
-        "h-10 w-10 rounded-sm border border-border text-xs font-semibold transition-all",
-        getButtonStyle(),
+        "size-10 shrink-0 rounded-t-lg rounded-b-sm border text-xs font-semibold transition-colors sm:size-11",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card",
+        !seat.isAvailable && "cursor-not-allowed border-border bg-muted text-muted-foreground/60",
+        seat.isAvailable && !isSelected && "border-emerald-400/50 bg-emerald-400/10 text-emerald-100 hover:bg-emerald-400/25",
+        isSelected && "border-primary bg-primary text-primary-foreground shadow-[0_0_0_2px_rgba(243,81,112,0.18)]",
       )}
-      title={`${seat.row}${seat.seatNumber} - ${
-        !seat.isAvailable ? "Booked" : isSelected ? "Selected" : "Available"
-      }`}
     >
-      <span className="hidden sm:inline">{seat.seatNumber}</span>
-      <span className="sm:hidden">{seat.seatNumber}</span>
-    </motion.button>
+      {seat.seatNumber}
+    </button>
   );
 }

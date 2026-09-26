@@ -7,6 +7,13 @@ export type Showtime = {
   format: string;
   totalSeats: number;
   bookedSeats: string[]; // e.g., ["A1", "A2"]
+  theaterName?: string;
   createdAt?: Date;
   updatedAt?: Date;
+};
+
+export type ShowtimeDetails = {
+  showtime: Showtime & { pricePerSeat: number };
+  theater: import("./theater").Theater;
+  theaterName: string;
 };

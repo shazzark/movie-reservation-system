@@ -4,26 +4,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withDb } from "../../../../lib/routeHandler";
 import { signupUser } from "../../../../services/user.service";
+import { toPublicUserResponse } from "../../../../lib/public-user-response";
+import { z } from "zod";
 
-export const POST = withDb(async (req: NextRequest, _context) => {
-  console.log("SIGNUP ROUTE HIT!");
-  const { name, email, password, confirmPassword } = await req.json();
+const signupSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  email: z.string().trim().email().max(254),
+  password: z.string().min(8).max(72),
+  confirmPassword: z.string().min(8).max(72),
+}).strict().refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
 
-  if (!name || !email || !password || !confirmPassword) {
+export const POST = withDb(async (req: NextRequest) => {
+  const parsed = signupSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "All fields are required" },
+      { error: parsed.error.issues.map((issue) => issue.message).join(" ") },
       { status: 400 },
     );
   }
-
-  if (password !== confirmPassword) {
-    return NextResponse.json(
-      { error: "Passwords do not match" },
-      { status: 400 },
-    );
-  }
-
-  const newUser = await signupUser({ name, email, password });
-
-  return NextResponse.json(newUser, { status: 201 });
+  const newUser = await signupUser(parsed.data);
+  return NextResponse.json(toPublicUserResponse(newUser), { status: 201 });
 });

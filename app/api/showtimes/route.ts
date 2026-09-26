@@ -2,7 +2,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { handleDbConnection } from "@/lib/dbHandler";
-import { ShowtimeModel } from "@/models/showtime";
+import { getUpcomingShowtimesForMovie } from "@/services/discovery.service";
 import mongoose from "mongoose";
 
 export async function GET(req: NextRequest) {
@@ -15,22 +15,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Movie ID required" }, { status: 400 });
     }
 
-    // --- FIX START ---
-    // Check if movieId is a valid ObjectId format
     if (!mongoose.Types.ObjectId.isValid(movieId)) {
-      console.warn(`Invalid Movie ID format received: ${movieId}`);
-      // Return empty array if ID is invalid
-      return NextResponse.json([]);
+      return NextResponse.json({ error: "Invalid movie ID" }, { status: 400 });
     }
-    // --- FIX END ---
-
-    const showtimes = await ShowtimeModel.find({
-      movieId: new mongoose.Types.ObjectId(movieId),
-    }).sort({
-      startTime: 1,
-    });
-
-    return NextResponse.json(showtimes);
+    return NextResponse.json(await getUpcomingShowtimesForMovie(movieId));
   } catch (error) {
     console.error("List Showtimes Error:", error);
     return NextResponse.json(

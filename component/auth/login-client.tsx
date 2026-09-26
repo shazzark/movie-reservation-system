@@ -17,6 +17,10 @@ export function LoginClient() {
 
   // Get success message from URL (from Signup redirect)
   const successMsg = searchParams.get("success");
+  const requestedCallback = searchParams.get("callbackUrl");
+  const callbackUrl = requestedCallback?.startsWith("/") && !requestedCallback.startsWith("//") && !requestedCallback.includes("\\")
+    ? requestedCallback
+    : "/";
 
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -62,7 +66,7 @@ export function LoginClient() {
 
     try {
       // 1. NextAuth Sign In
-      const result = await authApi.login(formData.email, formData.password);
+      const result = await authApi.login(formData.email, formData.password, callbackUrl);
 
       if (result?.error) {
         setError("Invalid email or password");
@@ -78,7 +82,7 @@ export function LoginClient() {
       }
 
       // 3. Success Redirect
-      router.push("/");
+      router.push(callbackUrl);
       router.refresh();
     } catch (err) {
       // ✅ Fixed: Type-safe error handling (no 'any')
@@ -115,6 +119,7 @@ export function LoginClient() {
             {/* Success Message from Signup */}
             {successMsg && !error && (
               <motion.div
+                role="alert"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 className="mb-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm flex items-center gap-2"
@@ -136,13 +141,15 @@ export function LoginClient() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-200 mb-2">
+                <label htmlFor="login-email" className="block text-sm font-medium text-slate-200 mb-2">
                   Email Address
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
                   <Input
+                    id="login-email"
                     type="email"
+                    autoComplete="email"
                     name="email"
                     placeholder="john@example.com"
                     value={formData.email}
@@ -155,7 +162,7 @@ export function LoginClient() {
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-slate-200">
+                  <label htmlFor="login-password" className="block text-sm font-medium text-slate-200">
                     Password
                   </label>
                   <Link
@@ -169,7 +176,9 @@ export function LoginClient() {
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
                   <Input
+                    id="login-password"
                     type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
                     name="password"
                     placeholder="Enter your password"
                     value={formData.password}
@@ -179,8 +188,10 @@ export function LoginClient() {
                   />
                   <button
                     type="button"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-pressed={showPassword}
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-slate-500 hover:text-slate-300"
+                    className="absolute right-3 top-3 rounded text-slate-500 hover:text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -193,6 +204,7 @@ export function LoginClient() {
 
               <div className="flex items-center gap-3 pt-2">
                 <input
+                  id="remember-me"
                   type="checkbox"
                   name="rememberMe"
                   checked={formData.rememberMe}
@@ -200,7 +212,7 @@ export function LoginClient() {
                   className="rounded border-purple-500/30 accent-purple-600 h-4 w-4 bg-transparent"
                   disabled={isLoading}
                 />
-                <label className="text-sm text-slate-400">Remember me</label>
+                <label htmlFor="remember-me" className="text-sm text-slate-400">Remember me</label>
               </div>
 
               <Button
@@ -222,7 +234,7 @@ export function LoginClient() {
               <p className="text-slate-400">
                 Don&apos;t have an account?{" "}
                 <Link
-                  href="/signup"
+                  href={callbackUrl === "/" ? "/signup" : `/signup?callbackUrl=${encodeURIComponent(callbackUrl)}`}
                   className="text-purple-400 hover:text-pink-400 font-medium"
                 >
                   Sign Up

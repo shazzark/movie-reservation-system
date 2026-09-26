@@ -1,372 +1,131 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import Image from "next/image";
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CalendarDays, Clock3, MapPin, Ticket, XCircle } from "lucide-react";
 import { Card } from "../../component/ui/card";
 import { Button } from "../../component/ui/button";
 import { Badge } from "../../component/ui/badge";
-import Link from "next/link";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../../component/ui/tabs";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from "../../component/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../component/ui/tabs";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "../../component/ui/alert-dialog";
 import type { Booking } from "../../types/booking";
 import type { Movie } from "../../types/movie";
 import type { Theater } from "../../types/theater";
-import api from "../../lib/api";
-import {
-  Ticket,
-  Calendar,
-  MapPin,
-  Users,
-  Trash2,
-  ChevronRight,
-  Home,
-} from "lucide-react";
-import { motion } from "framer-motion";
+import api, { ApiRequestError } from "../../lib/api";
 
 export function ProfileClient() {
   const queryClient = useQueryClient();
-  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState<Booking | null>(null);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const bookingsQuery = useQuery({ queryKey: ["bookings"], queryFn: api.booking.getUserBookings });
+  const moviesQuery = useQuery<Movie[], Error>({ queryKey: ["movies"], queryFn: api.movies.getAll });
+  const theatersQuery = useQuery<Theater[], Error>({ queryKey: ["theaters"], queryFn: api.theaters.getAll });
 
-  // --- API Data Fetching ---
-  const { data: bookingsRes } = useQuery({
-    queryKey: ["bookings"],
-    queryFn: () => api.booking.getUserBookings(),
-  });
-
-  const { data: movies } = useQuery({
-    queryKey: ["movies"],
-    queryFn: () => api.movies.getAll(),
-  });
-
-  const { data: theaters } = useQuery({
-    queryKey: ["theaters"],
-    queryFn: () => api.theaters.getAll(),
-  });
-
-  // --- Cancel Mutation ---
   const cancelMutation = useMutation({
-    mutationFn: (id: string) => api.booking.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bookings"] });
-      setCancellingId(null);
+    mutationFn: (booking: Booking) => api.booking.delete(booking._id),
+    onSuccess: async (response) => {
+      setCancelling(null);
+      setCancelError(null);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["bookings"] }),
+        queryClient.invalidateQueries({ queryKey: ["showtime", response.data?.showtimeId] }),
+        queryClient.invalidateQueries({ queryKey: ["seats", response.data?.showtimeId] }),
+        queryClient.invalidateQueries({ queryKey: ["showtimes"] }),
+        queryClient.invalidateQueries({ queryKey: ["discovery-movies"] }),
+      ]);
+    },
+    onError: (error) => {
+      setCancelError(error instanceof ApiRequestError && error.status === 409
+        ? error.message
+        : error instanceof Error ? error.message : "The reservation could not be cancelled.");
+      setCancelling(null);
     },
   });
 
-  // --- Data Extraction ---
-  // Map _id to id to avoid TS errors
-  const bookings = ((bookingsRes?.data as Booking[]) || []).map((b) => ({
-    ...b,
-    id: b._id,
-    bookingDate: b.bookingDate || new Date().toISOString(), // fallback for invalid date
-    theaterId: b.theaterId,
-  }));
+  const bookings = bookingsQuery.data?.data ?? [];
+  const movieById = useMemo(() => new Map((moviesQuery.data ?? []).map((movie) => [movie._id, movie])), [moviesQuery.data]);
+  const theaterById = useMemo(() => new Map((theatersQuery.data ?? []).map((theater) => [theater._id, theater])), [theatersQuery.data]);
+  const [now] = useState(() => Date.now());
+  const cancelled = bookings.filter((booking) => booking.status === "cancelled").sort((a, b) => new Date(b.bookingDate).getTime() - new Date(a.bookingDate).getTime());
+  const upcoming = bookings.filter((booking) => booking.status !== "cancelled" && booking.showtimeStartTime && new Date(booking.showtimeStartTime).getTime() > now).sort((a, b) => new Date(a.showtimeStartTime!).getTime() - new Date(b.showtimeStartTime!).getTime());
+  const past = bookings.filter((booking) => booking.status !== "cancelled" && (!booking.showtimeStartTime || new Date(booking.showtimeStartTime).getTime() <= now)).sort((a, b) => new Date(b.showtimeStartTime ?? b.bookingDate).getTime() - new Date(a.showtimeStartTime ?? a.bookingDate).getTime());
 
-  const getMovieDetails = (movieId: string) => {
-    if (!movies) return undefined;
-    return (movies as Movie[]).find((m) => m._id === movieId);
-  };
+  const isLoading = bookingsQuery.isLoading || moviesQuery.isLoading || theatersQuery.isLoading;
+  const loadError = bookingsQuery.error ?? moviesQuery.error ?? theatersQuery.error;
+  const retry = () => void Promise.all([bookingsQuery.refetch(), moviesQuery.refetch(), theatersQuery.refetch()]);
 
-  const getTheaterName = (theaterId?: string) => {
-    if (!theaterId) return "Unknown Theater";
-    const theater = (theaters as Theater[])?.find((t) => t._id === theaterId);
-    return theater?.name || "Unknown Theater";
-  };
+  if (isLoading) return <div className="mx-auto max-w-6xl space-y-6 px-4 py-12 sm:px-6 lg:px-8" role="status" aria-live="polite" aria-label="Loading reservation history"><div className="h-10 w-64 animate-pulse rounded-lg bg-muted" /><div className="h-36 animate-pulse rounded-3xl bg-muted" /><div className="h-52 animate-pulse rounded-3xl bg-muted" /></div>;
+  if (loadError) return <div className="mx-auto max-w-2xl px-4 py-24 text-center" role="alert"><h1 className="text-3xl font-bold">Reservations could not load</h1><p className="mt-3 text-muted-foreground">{loadError.message}</p><Button className="mt-6" onClick={retry}>Try again</Button></div>;
 
-  // Original Logic for filtering
-  const upcomingBookings = bookings
-    .filter((b) => b.status !== "cancelled")
-    .sort(
-      (a, b) =>
-        new Date(b.bookingDate).getTime() - new Date(a.bookingDate).getTime(),
-    );
-
-  const pastBookings = bookings
-    .filter((b) => b.status === "cancelled")
-    .sort(
-      (a, b) =>
-        new Date(b.bookingDate).getTime() - new Date(a.bookingDate).getTime(),
-    );
+  const renderBookings = (items: Booking[], emptyMessage: string, group: "upcoming" | "past" | "cancelled") => items.length === 0 ? (
+    <Card className="border-border p-9 text-center"><Ticket className="mx-auto size-9 text-muted-foreground" aria-hidden="true" /><p className="mt-3 text-muted-foreground">{emptyMessage}</p>{group === "upcoming" && <Button asChild className="mt-5"><Link href="/movies">Browse movies</Link></Button>}</Card>
+  ) : (
+    <div className="space-y-4">
+      {items.map((booking) => {
+        const movie = movieById.get(booking.movieId);
+        const theater = theaterById.get(booking.theaterId);
+        const startsAt = booking.showtimeStartTime ? new Date(booking.showtimeStartTime) : null;
+        const canCancel = booking.status === "confirmed" && startsAt !== null && startsAt.getTime() > now;
+        const badgeText = booking.status === "cancelled" ? "Cancelled" : booking.status;
+        return (
+          <Card key={booking._id} className="overflow-hidden border-border p-4 sm:p-5">
+            <div className="flex flex-col gap-5 sm:flex-row">
+              {movie?.posterUrl && <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden rounded-xl border border-border bg-muted sm:aspect-[3/4] sm:w-24"><Image src={movie.posterUrl} alt={`${movie.title} poster`} fill sizes="(max-width: 640px) 100vw, 96px" className="object-cover" /></div>}
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div><h2 className="text-xl font-bold">{movie?.title ?? "Movie details unavailable"}</h2><p className="mt-1 break-all text-xs text-muted-foreground">Reservation {booking._id}</p></div>
+                  <Badge variant={booking.status === "cancelled" ? "secondary" : "outline"} className="capitalize">{badgeText}</Badge>
+                </div>
+                <div className="mt-5 grid gap-x-5 gap-y-4 text-sm sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="flex gap-2"><MapPin className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" /><div><p className="text-xs text-muted-foreground">Theater</p><p className="mt-0.5 font-semibold">{theater?.name ?? "Theater unavailable"}</p>{theater?.location && <p className="text-xs text-muted-foreground">{theater.location}</p>}</div></div>
+                  <div className="flex gap-2"><CalendarDays className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" /><div><p className="text-xs text-muted-foreground">Showtime</p><p className="mt-0.5 font-semibold">{startsAt ? new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(startsAt) : "Unavailable"}</p></div></div>
+                  <div className="flex gap-2"><Clock3 className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" /><div><p className="text-xs text-muted-foreground">Time</p><p className="mt-0.5 font-semibold">{startsAt ? new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(startsAt) : "Unavailable"}</p></div></div>
+                  <div className="flex gap-2"><Ticket className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" /><div><p className="text-xs text-muted-foreground">Seats</p><p className="mt-0.5 font-semibold">{booking.seats.join(", ")}</p></div></div>
+                </div>
+                <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+                  <p className="text-sm text-muted-foreground">Reservation total <span className="ml-2 text-lg font-bold text-foreground">${booking.totalPrice.toFixed(2)}</span></p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button asChild variant="outline" size="sm"><Link href={`/confirmation/${booking._id}`}>View reservation</Link></Button>
+                    {canCancel && <Button variant="outline" size="sm" disabled={cancelMutation.isPending} onClick={() => { setCancelError(null); setCancelling(booking); }}><XCircle className="size-4" aria-hidden="true" /> Cancel reservation</Button>}
+                    {group === "past" && <Button asChild variant="outline" size="sm"><Link href={`/movie/${booking.movieId}`}>View movie</Link></Button>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+        );
+      })}
+    </div>
+  );
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="mx-auto max-w-4xl px-4 py-12"
-    >
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <Link href="/">
-            <Button variant="ghost" size="sm" className="gap-2">
-              <Home className="h-4 w-4" />
-              Home
-            </Button>
-          </Link>
-        </motion.div>
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-        className="mb-8"
-      >
-        <h1 className="text-4xl font-bold text-foreground mb-2">My Bookings</h1>
-        <p className="text-muted-foreground">Manage your movie reservations</p>
-      </motion.div>
-
-      {bookings.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          <Card className="p-12 text-center border-border">
-            <Ticket className="h-16 w-16 mx-auto text-muted-foreground mb-4 opacity-50" />
-            <h2 className="text-2xl font-bold text-foreground mb-2">
-              No bookings yet
-            </h2>
-            <p className="text-muted-foreground mb-6">
-              Start booking your favorite movies now!
-            </p>
-            <Link href="/">
-              <Button>Browse Movies</Button>
-            </Link>
-          </Card>
-        </motion.div>
-      ) : (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-        >
-          <Tabs defaultValue="upcoming" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-8">
-              <TabsTrigger value="upcoming">
-                Upcoming ({upcomingBookings.length})
-              </TabsTrigger>
-              <TabsTrigger value="past">
-                Past ({pastBookings.length})
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Upcoming Bookings */}
-            <TabsContent value="upcoming" className="space-y-4">
-              {upcomingBookings.length === 0 ? (
-                <Card className="p-8 text-center border-border">
-                  <p className="text-muted-foreground">
-                    No upcoming bookings. Book a movie now!
-                  </p>
-                </Card>
-              ) : (
-                upcomingBookings.map((booking, index) => {
-                  const movie = getMovieDetails(booking.movieId);
-                  if (!movie) return null;
-
-                  const startDate = new Date(booking.bookingDate);
-                  const isActive = booking.status === "confirmed";
-
-                  return (
-                    <motion.div
-                      key={booking.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.4, delay: index * 0.1 }}
-                    >
-                      <Card className="p-6 hover:shadow-lg transition-shadow border-border">
-                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-start gap-3 mb-4">
-                              <Ticket className="h-5 w-5 text-accent mt-1 shrink-0" />
-                              <div>
-                                <h3 className="text-lg font-bold text-foreground">
-                                  {movie.title}
-                                </h3>
-                                <p className="text-sm text-muted-foreground">
-                                  Reference: {booking.id}
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                              <div>
-                                <p className="text-muted-foreground text-xs">
-                                  <MapPin className="h-3 w-3 inline mr-1" />
-                                  Theater
-                                </p>
-                                <p className="font-semibold text-foreground">
-                                  {getTheaterName(booking.theaterId)}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-muted-foreground text-xs">
-                                  <Calendar className="h-3 w-3 inline mr-1" />
-                                  Date
-                                </p>
-                                <p className="font-semibold text-foreground">
-                                  {startDate.toLocaleDateString()}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-muted-foreground text-xs">
-                                  <Ticket className="h-3 w-3 inline mr-1" />
-                                  Time
-                                </p>
-                                <p className="font-semibold text-foreground">
-                                  {startDate.toLocaleTimeString([], {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-muted-foreground text-xs">
-                                  <Users className="h-3 w-3 inline mr-1" />
-                                  Seats
-                                </p>
-                                <p className="font-semibold text-foreground">
-                                  {booking.seats.join(", ")}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex flex-col gap-2 md:ml-4">
-                            <Badge
-                              className={
-                                isActive ? "bg-green-500/20 text-green-600" : ""
-                              }
-                            >
-                              {isActive ? "Active" : "Confirmed"}
-                            </Badge>
-                            <p className="text-lg font-bold text-accent">
-                              ${booking.totalPrice.toFixed(2)}
-                            </p>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-2 text-destructive hover:text-destructive bg-transparent"
-                              onClick={() => setCancellingId(booking.id)}
-                              disabled={booking.status === "cancelled"}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      </Card>
-                    </motion.div>
-                  );
-                })
-              )}
-            </TabsContent>
-
-            {/* Past Bookings */}
-            <TabsContent value="past" className="space-y-4">
-              {pastBookings.length === 0 ? (
-                <Card className="p-8 text-center border-border">
-                  <p className="text-muted-foreground">No past bookings yet.</p>
-                </Card>
-              ) : (
-                pastBookings.map((booking, index) => {
-                  const movie = getMovieDetails(booking.movieId);
-                  if (!movie) return null;
-
-                  const startDate = new Date(booking.bookingDate);
-
-                  return (
-                    <motion.div
-                      key={booking.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.4, delay: index * 0.1 }}
-                    >
-                      <Card className="p-6 border-border opacity-75">
-                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                          <div className="flex-1">
-                            <h3 className="text-lg font-bold text-foreground mb-2">
-                              {movie.title}
-                            </h3>
-                            <p className="text-sm text-muted-foreground mb-3">
-                              {startDate.toLocaleDateString()} at{" "}
-                              {startDate.toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              Cancelled • Reference: {booking.id}
-                            </p>
-                          </div>
-
-                          <div className="flex flex-col gap-2 md:ml-4">
-                            <Badge variant="secondary">Cancelled</Badge>
-                            <Link
-                              href={`/movie/${booking.movieId}`}
-                              className="block"
-                            >
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="w-full gap-2 bg-transparent"
-                              >
-                                Book Again
-                                <ChevronRight className="h-4 w-4" />
-                              </Button>
-                            </Link>
-                          </div>
-                        </div>
-                      </Card>
-                    </motion.div>
-                  );
-                })
-              )}
-            </TabsContent>
-          </Tabs>
-        </motion.div>
+    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="mb-8"><p className="text-xs font-bold uppercase tracking-[0.22em] text-primary">Your account</p><h1 className="mt-2 text-4xl font-bold tracking-tight">Reservation history</h1><p className="mt-3 text-muted-foreground">Review upcoming screenings, past visits, and cancelled reservations.</p></div>
+      {cancelError && <div role="alert" className="mb-5 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm">{cancelError}</div>}
+      {bookings.length === 0 ? <Card className="border-border p-10 text-center"><Ticket className="mx-auto size-10 text-muted-foreground" aria-hidden="true" /><h2 className="mt-4 text-2xl font-bold">No reservations yet</h2><p className="mt-2 text-muted-foreground">Choose a movie and screening to make your first reservation.</p><Button asChild className="mt-6"><Link href="/movies">Browse movies</Link></Button></Card> : (
+        <Tabs defaultValue="upcoming">
+          <TabsList className="mb-6 grid w-full grid-cols-3 sm:w-fit sm:min-w-[420px]">
+            <TabsTrigger value="upcoming">Upcoming ({upcoming.length})</TabsTrigger>
+            <TabsTrigger value="past">Past ({past.length})</TabsTrigger>
+            <TabsTrigger value="cancelled">Cancelled ({cancelled.length})</TabsTrigger>
+          </TabsList>
+          <TabsContent value="upcoming" className="space-y-4">{renderBookings(upcoming, "No upcoming screenings are reserved.", "upcoming")}</TabsContent>
+          <TabsContent value="past" className="space-y-4">{renderBookings(past, "Past screenings will appear here.", "past")}</TabsContent>
+          <TabsContent value="cancelled" className="space-y-4">{renderBookings(cancelled, "You have no cancelled reservations.", "cancelled")}</TabsContent>
+        </Tabs>
       )}
-
-      {/* Cancel Confirmation Dialog */}
-      <AlertDialog
-        open={!!cancellingId}
-        onOpenChange={() => setCancellingId(null)}
-      >
+      <AlertDialog open={Boolean(cancelling)} onOpenChange={(open) => { if (!open && !cancelMutation.isPending) setCancelling(null); }}>
         <AlertDialogContent>
-          <AlertDialogTitle>Cancel Booking?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Are you sure you want to cancel this booking? You will receive a
-            refund to your original payment method.
-          </AlertDialogDescription>
-          <div className="flex gap-3">
-            <AlertDialogCancel>Keep Booking</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() =>
-                cancellingId && cancelMutation.mutate(cancellingId)
-              }
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Cancel Booking
-            </AlertDialogAction>
+          <AlertDialogTitle>Cancel this reservation?</AlertDialogTitle>
+          <AlertDialogDescription>Its seats will be released for other customers. This action cannot be undone.</AlertDialogDescription>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <AlertDialogCancel disabled={cancelMutation.isPending}>Keep reservation</AlertDialogCancel>
+            <AlertDialogAction disabled={cancelMutation.isPending} onClick={(event) => { event.preventDefault(); if (cancelling) cancelMutation.mutate(cancelling); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{cancelMutation.isPending ? "Cancelling…" : "Cancel reservation"}</AlertDialogAction>
           </div>
         </AlertDialogContent>
       </AlertDialog>
-    </motion.div>
+    </div>
   );
 }

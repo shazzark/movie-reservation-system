@@ -1,35 +1,27 @@
-// api/theaters/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { withDb } from "../../../lib/routeHandler";
-import { TheaterModel } from "../../../models/theater";
+import mongoose from "mongoose";
+import { z } from "zod";
+import { withDb } from "@/lib/routeHandler";
+import { withAdmin } from "@/lib/adminHandler";
+import { TheaterModel } from "@/models/theater";
+import { theaterSeatCapacity } from "@/lib/admin-cms-rules";
 
-// // GET ALL
-// export const GET = withDb(async () => {
-//   const theaters = await TheaterModel.find().lean();
-//   // Convert _id to string for the client
-//   const theatersWithStringId = theaters.map((t) => ({
-//     ...t,
-//     _id: t._id.toString(),
-//   }));
-//   return NextResponse.json(theatersWithStringId);
-// });
+const theaterSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  location: z.string().trim().min(1).max(240),
+  rows: z.number().int().positive().max(40),
+  seatsPerRow: z.number().int().positive().max(40),
+}).strict();
 
-// // CREATE (For Admin)
-// export const POST = withDb(async (req: NextRequest) => {
-//   const body = await req.json();
-//   const newTheater = await TheaterModel.create(body);
-//   return NextResponse.json(newTheater, { status: 201 });
-// });
-
-export const GET = withDb(async (_req: NextRequest, _context) => {
-  const theaters = await TheaterModel.find().lean();
-  return NextResponse.json(
-    theaters.map((t) => ({ ...t, _id: t._id.toString() })),
-  );
+export const GET = withDb(async () => {
+  const theaters = await TheaterModel.find().sort({ name: 1 }).lean();
+  return NextResponse.json(theaters.map((theater) => ({ ...theater, _id: String(theater._id) })));
 });
 
-export const POST = withDb(async (req: NextRequest, _context) => {
-  const body = await req.json();
-  const newTheater = await TheaterModel.create(body);
-  return NextResponse.json(newTheater, { status: 201 });
-});
+export const POST = withDb(withAdmin(async (req: NextRequest) => {
+  const parsed = theaterSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues.map((issue) => issue.message).join(" ") }, { status: 400 });
+  const totalSeats = theaterSeatCapacity(parsed.data.rows, parsed.data.seatsPerRow);
+  const theater = await TheaterModel.create({ _id: new mongoose.Types.ObjectId().toString(), ...parsed.data, totalSeats });
+  return NextResponse.json({ ...theater.toObject(), _id: String(theater._id) }, { status: 201 });
+}));

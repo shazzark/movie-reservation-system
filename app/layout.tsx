@@ -6,31 +6,17 @@ import { Analytics } from "@vercel/analytics/next";
 
 import QueryProvider from "@/providers/query-provider";
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
+});
 
 export const metadata: Metadata = {
   title: "CineBook - Movie Reservation System",
   description:
-    "Book your favorite movies online. Easy seat selection, instant confirmation, and secure checkout.",
-  generator: "v0.app",
-  icons: {
-    icon: [
-      {
-        url: "/icon-light-32x32.png",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        url: "/icon-dark-32x32.png",
-        media: "(prefers-color-scheme: dark)",
-      },
-      {
-        url: "/icon.svg",
-        type: "image/svg+xml",
-      },
-    ],
-    apple: "/apple-icon.png",
-  },
+    "Explore movies, choose your seats, and reserve your place at the cinema.",
+  icons: { icon: "/icon.svg" },
 };
 
 export const viewport: Viewport = {
@@ -38,7 +24,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   userScalable: true,
-  themeColor: "#000000",
+  themeColor: "#101116",
 };
 
 export default function RootLayout({
@@ -48,7 +34,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`font-sans antialiased`}>
+      <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased`}>
         <QueryProvider>{children}</QueryProvider>
         <Analytics />
       </body>

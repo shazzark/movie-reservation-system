@@ -11,7 +11,7 @@ const BookingSchema = new Schema(
       ref: "Showtime",
       required: true,
     },
-    theaterId: { type: Schema.Types.ObjectId, ref: "Theater", required: true }, // ADD THIS
+    theaterId: { type: String, ref: "Theater", required: true },
     seats: { type: [String], required: true },
     totalPrice: { type: Number, required: true },
     status: {
@@ -19,12 +19,6 @@ const BookingSchema = new Schema(
       enum: ["pending", "confirmed", "cancelled"],
       default: "confirmed",
     },
-    paymentStatus: {
-      type: String,
-      enum: ["pending", "completed", "failed"],
-      default: "pending",
-    },
-
     bookingDate: { type: Date, required: true, default: Date.now }, // ADD THIS
   },
   { timestamps: true },

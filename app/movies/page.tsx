@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { Navigation } from "../../component/navigation";
-import { Footer } from "../../component/footer";
+import { CustomerShell } from "@/component/layout/customer-shell";
 import { MoviesClient } from "../../component/movies/movie-client";
 // @/components/movies/movies-client
 export const metadata: Metadata = {
@@ -10,10 +9,8 @@ export const metadata: Metadata = {
 
 export default function MoviesPage() {
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navigation />
+    <CustomerShell>
       <MoviesClient />
-      <Footer />
-    </div>
+    </CustomerShell>
   );
 }

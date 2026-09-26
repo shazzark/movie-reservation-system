@@ -1,49 +1,33 @@
-// movie/[id]/page.tsx
 import type { Metadata } from "next";
-import { Navigation } from "../../../component/navigation";
-import { Footer } from "../../../component/footer";
-import { MovieDetailsClient } from "../../../component/movie/movie-detail";
-import { movies } from "../../../lib/mockData";
+import mongoose from "mongoose";
+import { CustomerShell } from "@/component/layout/customer-shell";
+import { MovieDetailsClient } from "@/component/movie/movie-detail";
+import { handleDbConnection } from "@/lib/dbHandler";
+import { getMovieById } from "@/services/movie.service";
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-async function getMovieMetadata(id: string) {
-  const movie = movies.find((m) => m.id === id);
-  return movie;
-}
-
-export async function generateMetadata({
-  params,
-}: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
-  const movie = await getMovieMetadata(id);
-
-  return {
-    title: movie ? `${movie.title} - CineBook` : "Movie - CineBook",
-    description: movie
-      ? movie.description
-      : "Book your movie tickets with CineBook",
-  };
-}
-
-export async function generateStaticParams() {
-  return movies.map((movie) => ({
-    id: movie.id,
-  }));
+  if (!mongoose.Types.ObjectId.isValid(id)) return { title: "Movie - CineBook" };
+  try {
+    await handleDbConnection();
+    const movie = await getMovieById(id);
+    return movie
+      ? { title: `${movie.title} - CineBook`, description: movie.description }
+      : { title: "Movie - CineBook" };
+  } catch {
+    return { title: "Movie - CineBook" };
+  }
 }
 
 export default async function MoviePage({ params }: PageProps) {
   const { id } = await params;
-
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <Navigation />
-      <main className="flex-1">
-        <MovieDetailsClient movieId={id} />
-      </main>
-      <Footer />
-    </div>
+    <CustomerShell>
+      <MovieDetailsClient movieId={id} />
+    </CustomerShell>
   );
 }

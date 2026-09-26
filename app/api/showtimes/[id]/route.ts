@@ -36,12 +36,17 @@ export async function GET(
     // Fetch the actual Theater using the theaterId
     const theater = await TheaterModel.findById(showtime.theaterId).lean();
 
+    if (!theater) {
+      return NextResponse.json({ error: "Theater not found" }, { status: 404 });
+    }
+
     return NextResponse.json({
       showtime: {
         ...showtime,
         pricePerSeat: showtime.price,
       },
-      theaterName: theater ? theater.name : "Cinema Palace",
+      theater,
+      theaterName: theater.name,
     });
   } catch (error) {
     console.error("Showtime Detail Error:", error);

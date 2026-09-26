@@ -8,6 +8,8 @@ export type Movie = {
   duration: number; // in minutes
   rating: number;
   posterUrl: string;
+  backdropUrl?: string;
+  tmdbId?: number;
   releaseDate: string | Date;
   director: string; // Added this for your frontend
   seatsAvailable: number;

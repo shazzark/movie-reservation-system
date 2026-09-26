@@ -9,10 +9,10 @@ declare global {
   var mongoose: MongooseCache | undefined;
 }
 
-const MONGODB_URI = process.env.MONGODB_URI!;
-if (!MONGODB_URI) {
+const databaseUrl = process.env.DATABASE_URL ?? "";
+if (!databaseUrl) {
   throw new Error(
-    "Please define the MONGODB_URI environment variable inside .env.local"
+    "Please define the DATABASE_URL environment variable inside .env.local"
   );
 }
 
@@ -26,7 +26,10 @@ async function dbConnect(): Promise<mongoose.Mongoose> {
   if (cached.conn) return cached.conn;
 
   if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI).then((m) => m);
+    cached.promise = mongoose.connect(databaseUrl).catch((error) => {
+      cached.promise = null;
+      throw error;
+    });
   }
 
   cached.conn = await cached.promise;

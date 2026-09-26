@@ -1,124 +1,19 @@
 import type { Metadata } from "next";
-import { AdminSidebar } from "../../../component/admin/admin-sidebar";
-import { Card } from "../../../component/ui/card";
-import { Button } from "../../../component/ui/button";
-import { Input } from "../../../component/ui/input";
+import { Card } from "@/component/ui/card";
 
 export const metadata: Metadata = {
-  title: "Settings - Admin - CineBook",
-  description: "Admin settings for the reservation system",
+  title: "Settings - CineBook Studio",
 };
 
 export default function AdminSettingsPage() {
   return (
-    <div className="flex h-screen bg-background">
-      <AdminSidebar />
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-8 max-w-4xl">
-          <h1 className="text-4xl font-bold text-foreground mb-8">Settings</h1>
-
-          {/* General Settings */}
-          <Card className="p-8 border-border mb-8">
-            <h2 className="text-2xl font-bold text-foreground mb-6">
-              General Settings
-            </h2>
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Business Name
-                </label>
-                <Input
-                  defaultValue="CineBook"
-                  placeholder="Enter business name"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Support Email
-                </label>
-                <Input
-                  type="email"
-                  defaultValue="support@cinebook.com"
-                  placeholder="Enter support email"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Phone Number
-                </label>
-                <Input
-                  type="tel"
-                  defaultValue="+1 (555) 123-4567"
-                  placeholder="Enter phone number"
-                />
-              </div>
-              <Button>Save Changes</Button>
-            </div>
-          </Card>
-
-          {/* Payment Settings */}
-          <Card className="p-8 border-border mb-8">
-            <h2 className="text-2xl font-bold text-foreground mb-6">
-              Payment Settings
-            </h2>
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Base Ticket Price
-                </label>
-                <Input
-                  type="number"
-                  defaultValue="12.00"
-                  placeholder="Enter base price"
-                  step="0.01"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Premium Seat Surcharge
-                </label>
-                <Input
-                  type="number"
-                  defaultValue="3.00"
-                  placeholder="Enter surcharge amount"
-                  step="0.01"
-                />
-              </div>
-              <Button>Save Changes</Button>
-            </div>
-          </Card>
-
-          {/* System Settings */}
-          <Card className="p-8 border-border">
-            <h2 className="text-2xl font-bold text-foreground mb-6">
-              System Settings
-            </h2>
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Advance Booking Days
-                </label>
-                <Input
-                  type="number"
-                  defaultValue="30"
-                  placeholder="Days in advance for booking"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Cancellation Window (Hours)
-                </label>
-                <Input
-                  type="number"
-                  defaultValue="2"
-                  placeholder="Hours before showtime"
-                />
-              </div>
-              <Button>Save Changes</Button>
-            </div>
-          </Card>
-        </div>
-      </main>
-    </div>
+    <Card className="max-w-2xl p-8">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">CineBook Studio</p>
+      <h1 className="text-2xl font-semibold text-foreground">Settings</h1>
+      <p className="max-w-xl text-sm leading-6 text-muted-foreground">
+        Global settings are outside the scope of this demo. Movie information,
+        theater layouts, and showtime pricing will be managed in their own CMS sections.
+      </p>
+    </Card>
   );
 }

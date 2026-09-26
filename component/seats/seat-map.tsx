@@ -1,9 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import type { Seat } from "../../lib/types";
+import type { Seat } from "../../types/seat";
 import { SeatButton } from "./seats-button";
-import { motion } from "framer-motion";
 
 interface SeatMapProps {
   seats: Seat[];
@@ -14,85 +13,60 @@ interface SeatMapProps {
 export function SeatMap({ seats, selectedSeats, onSeatToggle }: SeatMapProps) {
   const seatsByRow = useMemo(() => {
     const rows = new Map<string, Seat[]>();
-    seats.forEach((seat) => {
-      if (!rows.has(seat.row)) {
-        rows.set(seat.row, []);
-      }
-      rows.get(seat.row)!.push(seat);
-    });
-    // Sort by row letter
-    return Array.from(rows.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    for (const seat of seats) {
+      const rowSeats = rows.get(seat.row) ?? [];
+      rowSeats.push(seat);
+      rows.set(seat.row, rowSeats);
+    }
+    return [...rows.entries()];
   }, [seats]);
-
-  const selectedIds = new Set(selectedSeats.map((s) => s.id));
+  const selectedIds = new Set(selectedSeats.map((seat) => seat.id));
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="space-y-6"
-    >
-      {/* Screen */}
-      <div className="text-center">
-        <div className="mx-auto w-4/5 h-1 bg-linear-to-r from-transparent via-foreground to-transparent mb-8 rounded-full" />
-        <p className="text-sm font-semibold text-muted-foreground">SCREEN</p>
+    <div className="space-y-7">
+      <div className="mx-auto max-w-3xl px-4 text-center" aria-hidden="true">
+        <div className="h-1.5 rounded-full bg-linear-to-r from-transparent via-primary/75 to-transparent shadow-[0_5px_26px_rgba(243,81,112,0.12)]" />
+        <p className="mt-3 text-[11px] font-bold tracking-[0.28em] text-muted-foreground">SCREEN</p>
       </div>
 
-      {/* Seats */}
-      <div className="space-y-4">
-        {seatsByRow.map(([row, rowSeats]) => (
-          <motion.div
-            key={row}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.3 }}
-            className="flex items-center justify-center gap-4"
-          >
-            {/* Row Label */}
-            <span className="w-6 text-center font-bold text-foreground text-sm">
-              {row}
-            </span>
-
-            {/* Seats */}
-            <div className="flex flex-wrap gap-2 justify-center">
-              {rowSeats.map((seat, idx) => (
-                <SeatButton
-                  key={seat.id}
-                  seat={seat}
-                  isSelected={selectedIds.has(seat.id)}
-                  onClick={() => {
-                    if (seat.isAvailable) {
-                      onSeatToggle(seat);
-                    }
-                  }}
-                />
-              ))}
+      <div
+        className="overflow-x-auto rounded-xl border border-border/70 bg-background/35 px-3 py-5 sm:px-5"
+        tabIndex={0}
+        role="region"
+        aria-label="Theater seats. Scroll horizontally to see all seats."
+      >
+        <div className="mx-auto w-max min-w-full space-y-3">
+          {seatsByRow.map(([row, rowSeats]) => (
+            <div key={row} className="flex w-max min-w-full items-center justify-center gap-2.5 sm:gap-3">
+              <span className="w-7 shrink-0 text-center text-xs font-bold text-muted-foreground">{row}</span>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                {rowSeats.map((seat) => (
+                  <SeatButton
+                    key={seat.id}
+                    seat={seat}
+                    isSelected={selectedIds.has(seat.id)}
+                    onClick={() => onSeatToggle(seat)}
+                  />
+                ))}
+              </div>
+              <span className="w-7 shrink-0 text-center text-xs font-bold text-muted-foreground">{row}</span>
             </div>
+          ))}
+        </div>
+      </div>
 
-            {/* Row Label (Right) */}
-            <span className="w-6 text-center font-bold text-foreground text-sm">
-              {row}
-            </span>
-          </motion.div>
+      <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3" aria-label="Seat legend">
+        {[
+          ["bg-emerald-400/15 border-emerald-400/50", "Available"],
+          ["bg-primary border-primary", "Selected"],
+          ["bg-muted border-border", "Occupied"],
+        ].map(([style, label]) => (
+          <div key={label} className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+            <span className={`size-4 rounded-t-md rounded-b-sm border ${style}`} aria-hidden="true" />
+            {label}
+          </div>
         ))}
       </div>
-
-      {/* Legend */}
-      <div className="flex flex-wrap gap-6 justify-center pt-8 border-t border-border">
-        <div className="flex items-center gap-2">
-          <div className="h-3 w-3 rounded-sm bg-green-500/20 border border-green-500/50" />
-          <span className="text-xs text-muted-foreground">Available</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="h-3 w-3 rounded-sm bg-accent" />
-          <span className="text-xs text-muted-foreground">Selected</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="h-3 w-3 rounded-sm bg-muted opacity-50" />
-          <span className="text-xs text-muted-foreground">Booked</span>
-        </div>
-      </div>
-    </motion.div>
+    </div>
   );
 }

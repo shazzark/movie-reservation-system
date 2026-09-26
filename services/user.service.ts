@@ -60,58 +60,16 @@ export const createUser = async (data: {
 //   return user;
 // };
 
-// In services/user.service.ts - update the loginUser function:
 export const loginUser = async (
   email: string,
   password: string,
 ): Promise<DbUser> => {
-  try {
-    console.log(`🔍 loginUser called for email: ${email}`);
+  const cleanEmail = email.trim().toLowerCase();
+  const user = await User.findOne({ email: cleanEmail });
+  if (!user?.password) throw new Error("Invalid email or password");
 
-    // Clean email
-    const cleanEmail = email.trim().toLowerCase();
-
-    // Find user
-    const user = await User.findOne({ email: cleanEmail });
-
-    if (!user) {
-      console.log(`❌ No user found with email: ${cleanEmail}`);
-      throw new Error("Invalid email or password");
-    }
-
-    console.log(`✅ User found: ${user._id}`);
-
-    // Check if user has password (social login users might not have one)
-    if (!user.password) {
-      console.log(`❌ User ${user._id} has no password set`);
-      throw new Error("Please use a different login method");
-    }
-
-    // Verify password
-    console.log(`🔐 Comparing password for user: ${user._id}`);
-    const isValid = await bcrypt.compare(password, user.password);
-
-    if (!isValid) {
-      console.log(`❌ Invalid password for user: ${user._id}`);
-      throw new Error("Invalid email or password");
-    }
-
-    console.log(`✅ Password valid for user: ${user._id}`);
-    return user;
-  } catch (error) {
-    console.error(`🔥 loginUser error for email ${email}:`, error);
-    throw error;
-  }
+  const isValid = await bcrypt.compare(password, user.password);
+  if (!isValid) throw new Error("Invalid email or password");
+  return user;
 };
-// FORGOT PASSWORD (generates token / returns dummy message for now)
-export const forgotPassword = async (
-  email: string,
-): Promise<{ message: string }> => {
-  const user = await User.findOne({ email });
-  if (!user) throw new Error("User not found");
-
-  // Here you would generate a reset token & send email
-  return { message: "Reset password link sent (mock)" };
-};
-
 export const signupUser = createUser;

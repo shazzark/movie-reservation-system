@@ -9,6 +9,8 @@ const MovieSchema = new Schema(
     duration: { type: Number, required: true },
     rating: { type: Number, default: 0 },
     posterUrl: { type: String, required: true },
+    backdropUrl: { type: String },
+    tmdbId: { type: Number, min: 1 },
     releaseDate: { type: Date, required: true },
     director: { type: String, required: true },
     seatsAvailable: { type: Number, required: true },
@@ -17,5 +19,7 @@ const MovieSchema = new Schema(
   },
   { timestamps: true },
 );
+
+MovieSchema.index({ tmdbId: 1 }, { unique: true, sparse: true });
 
 export const MovieModel = models.Movie || model("Movie", MovieSchema);

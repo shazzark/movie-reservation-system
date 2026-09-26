@@ -2,89 +2,76 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Film, BarChart3, Users, Settings, LogOut } from "lucide-react";
-import { Button } from "../../component/ui/button";
-import { cn } from "../../lib/utils";
-import { motion } from "framer-motion";
-
+import { ArrowUpRight, BarChart3, Film, Users, Building2, CalendarClock, Ticket } from "lucide-react";
+import { cn } from "@/lib/utils";
 import AdminLogo from "./admin-logo";
 
 const adminLinks = [
-  {
-    label: "Dashboard",
-    href: "/admin",
-    icon: BarChart3,
-  },
-  {
-    label: "Movies",
-    href: "/admin/movies",
-    icon: Film,
-  },
-  {
-    label: "Users",
-    href: "/admin/users",
-    icon: Users,
-  },
-  {
-    label: "Settings",
-    href: "/admin/settings",
-    icon: Settings,
-  },
+  { label: "Overview", href: "/admin", icon: BarChart3 },
+  { label: "Movies", href: "/admin/movies", icon: Film },
+  { label: "Theaters", href: "/admin/theaters", icon: Building2 },
+  { label: "Showtimes", href: "/admin/showtimes", icon: CalendarClock },
+  { label: "Reservations", href: "/admin/reservations", icon: Ticket },
+  { label: "Users", href: "/admin/users", icon: Users },
 ];
 
-export function AdminSidebar() {
+export function AdminSidebar({
+  open,
+  onNavigate,
+}: {
+  open: boolean;
+  onNavigate: () => void;
+}) {
   const pathname = usePathname();
 
   return (
-    <motion.aside
-      initial={{ x: -300, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      transition={{ duration: 0.3 }}
-      className="w-64 bg-card border-r border-border h-screen flex flex-col sticky top-0"
+    <aside
+      id="admin-navigation"
+      className={cn(
+        "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0",
+        open ? "translate-x-0" : "-translate-x-full",
+      )}
     >
-      {/* Logo */}
-      <div className="p-6 border-b border-border">
+      <div className="border-b border-sidebar-border px-6 py-5">
         <AdminLogo />
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto p-4">
-        <ul className="space-y-2">
-          {adminLinks.map((link) => {
-            const Icon = link.icon;
-            const isActive = pathname === link.href;
-
-            return (
-              <li key={link.href}>
-                <Link href={link.href}>
-                  <motion.button
-                    whileHover={{ x: 4 }}
-                    className={cn(
-                      "w-full flex items-center gap-3 px-4 py-3 rounded-md transition-colors",
-                      isActive
-                        ? "bg-accent text-accent-foreground"
-                        : "text-foreground hover:bg-muted",
-                    )}
-                  >
-                    <Icon className="h-5 w-5 shrink-0" />
-                    <span className="text-sm font-medium">{link.label}</span>
-                  </motion.button>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+      <nav aria-label="Admin navigation" className="flex-1 space-y-2 overflow-y-auto px-4 py-7">
+        <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+          Workspace
+        </p>
+        {adminLinks.map(({ label, href, icon: Icon }) => {
+          const active = href === "/admin" ? pathname === href : pathname.startsWith(href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              onClick={onNavigate}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+                active
+                  ? "bg-sidebar-accent text-sidebar-foreground before:mr-0.5 before:h-5 before:w-1 before:rounded-full before:bg-sidebar-primary"
+                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground",
+              )}
+            >
+              <Icon className="size-4" aria-hidden="true" />
+              {label}
+            </Link>
+          );
+        })}
       </nav>
 
-      {/* Logout */}
-      <div className="p-4 border-t border-border">
-        <Link href="/">
-          <Button variant="outline" className="w-full gap-2 bg-transparent">
-            <LogOut className="h-4 w-4" />
-            Exit Admin
-          </Button>
+      <div className="border-t border-sidebar-border p-4">
+        <Link
+          href="/"
+          onClick={onNavigate}
+          className="flex items-center justify-between rounded-xl px-3 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+        >
+          View customer site
+          <ArrowUpRight className="size-4" aria-hidden="true" />
         </Link>
       </div>
-    </motion.aside>
+    </aside>
   );
 }

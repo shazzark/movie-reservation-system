@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "../../component/ui/button";
 import { Input } from "../../component/ui/input";
 import { Card } from "../../component/ui/card";
@@ -13,6 +13,11 @@ import { authApi } from "../../lib/api"; // ✅ Connected to your API
 
 export function SignupClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedCallback = searchParams.get("callbackUrl");
+  const callbackUrl = requestedCallback?.startsWith("/") && !requestedCallback.startsWith("//") && !requestedCallback.includes("\\")
+    ? requestedCallback
+    : "/";
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,58 +38,6 @@ export function SignupClient() {
     }));
     setError("");
   };
-
-  // const handleSubmit = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   setError("");
-
-  //   // 1. Validation
-  //   if (!formData.fullName.trim()) {
-  //     setError("Full name is required");
-  //     return;
-  //   }
-  //   if (!isValidEmail(formData.email)) {
-  //     setError("Please enter a valid email address");
-  //     return;
-  //   }
-  //   if (formData.password.length < 8) {
-  //     setError("Password must be at least 8 characters");
-  //     return;
-  //   }
-  //   if (formData.password !== formData.confirmPassword) {
-  //     setError("Passwords do not match");
-  //     return;
-  //   }
-  //   if (!formData.agreeToTerms) {
-  //     setError("You must agree to the terms and conditions");
-  //     return;
-  //   }
-
-  //   setIsLoading(true);
-
-  //   try {
-  //     // 2. Real API Call (No more dummy storage)
-  //     const response = await authApi.signup({
-  //       name: formData.fullName,
-  //       email: formData.email,
-  //       password: formData.password,
-  //       confirmPassword: formData.confirmPassword,
-  //     });
-  //     console.log("Signup Response:", response); // 🔍 Debug check
-
-  //     if (response.success) {
-  //       // Redirect to login with a success message in URL
-  //       router.push("/login?success=Account created successfully!");
-  //     }
-  //   } catch (err) {
-  //     // ✅ Fixed: Type-safe error handling instead of 'any'
-  //     const errorMessage =
-  //       err instanceof Error ? err.message : "An unexpected error occurred";
-  //     setError(errorMessage);
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,7 +61,7 @@ export function SignupClient() {
       return;
     }
     if (!formData.agreeToTerms) {
-      setError("You must agree to the terms and conditions");
+      setError("Please acknowledge the demo limitations to continue");
       return;
     }
 
@@ -127,9 +80,7 @@ export function SignupClient() {
       // Check for response.success or check if the response exists/is valid
       if (response) {
         // Redirect to login with the success parameter
-        router.push(
-          "/login?success=Account created successfully! Please sign in.",
-        );
+        router.push(`/login?success=${encodeURIComponent("Account created successfully! Please sign in.")}&callbackUrl=${encodeURIComponent(callbackUrl)}`);
       }
     } catch (err) {
       const errorMessage =
@@ -166,6 +117,7 @@ export function SignupClient() {
 
             {error && (
               <motion.div
+                role="alert"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm"
@@ -176,13 +128,15 @@ export function SignupClient() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-200 mb-2">
+                <label htmlFor="signup-name" className="block text-sm font-medium text-slate-200 mb-2">
                   Full Name
                 </label>
                 <div className="relative">
                   <User className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
                   <Input
+                    id="signup-name"
                     type="text"
+                    autoComplete="name"
                     name="fullName"
                     placeholder="John Doe"
                     value={formData.fullName}
@@ -194,13 +148,15 @@ export function SignupClient() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-200 mb-2">
+                <label htmlFor="signup-email" className="block text-sm font-medium text-slate-200 mb-2">
                   Email Address
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
                   <Input
+                    id="signup-email"
                     type="email"
+                    autoComplete="email"
                     name="email"
                     placeholder="john@example.com"
                     value={formData.email}
@@ -212,13 +168,15 @@ export function SignupClient() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-200 mb-2">
+                <label htmlFor="signup-password" className="block text-sm font-medium text-slate-200 mb-2">
                   Password
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
                   <Input
+                    id="signup-password"
                     type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
                     name="password"
                     placeholder="At least 8 characters"
                     value={formData.password}
@@ -228,8 +186,10 @@ export function SignupClient() {
                   />
                   <button
                     type="button"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-pressed={showPassword}
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-slate-500 hover:text-slate-300"
+                    className="absolute right-3 top-3 rounded text-slate-500 hover:text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -241,13 +201,15 @@ export function SignupClient() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-200 mb-2">
+                <label htmlFor="signup-confirm-password" className="block text-sm font-medium text-slate-200 mb-2">
                   Confirm Password
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
                   <Input
+                    id="signup-confirm-password"
                     type={showConfirmPassword ? "text" : "password"}
+                    autoComplete="new-password"
                     name="confirmPassword"
                     placeholder="Confirm your password"
                     value={formData.confirmPassword}
@@ -257,8 +219,10 @@ export function SignupClient() {
                   />
                   <button
                     type="button"
+                    aria-label={showConfirmPassword ? "Hide confirmation password" : "Show confirmation password"}
+                    aria-pressed={showConfirmPassword}
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-3 text-slate-500 hover:text-slate-300"
+                    className="absolute right-3 top-3 rounded text-slate-500 hover:text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {showConfirmPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -271,6 +235,7 @@ export function SignupClient() {
 
               <div className="flex items-start gap-3 pt-2">
                 <input
+                  id="signup-demo-acknowledgement"
                   type="checkbox"
                   name="agreeToTerms"
                   checked={formData.agreeToTerms}
@@ -278,21 +243,8 @@ export function SignupClient() {
                   className="mt-1 rounded border-purple-500/30 accent-purple-600"
                   disabled={isLoading}
                 />
-                <label className="text-sm text-slate-400">
-                  I agree to the{" "}
-                  <Link
-                    href="#"
-                    className="text-purple-400 hover:text-pink-400"
-                  >
-                    Terms of Service
-                  </Link>{" "}
-                  and{" "}
-                  <Link
-                    href="#"
-                    className="text-purple-400 hover:text-pink-400"
-                  >
-                    Privacy Policy
-                  </Link>
+                <label htmlFor="signup-demo-acknowledgement" className="text-sm text-slate-400">
+                  I understand this demo does not process payments or send email.
                 </label>
               </div>
 
@@ -309,7 +261,7 @@ export function SignupClient() {
               <p className="text-slate-400">
                 Already have an account?{" "}
                 <Link
-                  href="/login"
+                  href={callbackUrl === "/" ? "/login" : `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`}
                   className="text-purple-400 hover:text-pink-400 font-medium"
                 >
                   Sign In
